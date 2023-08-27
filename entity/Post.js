@@ -4,58 +4,54 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { unabbreviateNumber } = require('js-abbreviation-number');
 
+function lowercaseK(t) {
+    return (t.charAt(t.length - 1) == 'K' ? t.substring(0, t.length - 1) + 'k' : t);
+}
 class Post {
-    constructor(creator,id) {
+    constructor(creator, id) {
         if (!creator) throw new Error('Username is required');
         if (!id) throw new Error('Id is required');
         if (creator[0] != '@') creator = '@' + creator; // if username is not start with @
         this.creator = creator;
         this.id = id;
+        this.cover_image_url = null;
+        this.embed_link = null;
+        this.like_count = null;
+        this.comment_count = null;
+        this.saved_count = null;
+        this.share_count = null;
     }
 
     async getPost() {
-        return axios.get(`https://www.tiktok.com/${this.creator}/video/${this.id}`)
+        await axios.get(`https://www.tiktok.com/${this.creator}/video/${this.id}`)
             .then(response => {
-                console.log(response.data);
                 let $ = cheerio.load(response.data);
-                this.create_time = create_time;
-                this.cover_image_url = cover_image_url;
-                this.share_url = share_url;
-                this.video_description = video_description;
-                this.video_duration = video_duration;
-                this.height = height;
-                this.width = width;
-                this.title = title;
-                this.embed_html = embed_html;
-                this.embed_link = embed_link;
-                this.like_count = like_count;
-                this.comment_count = comment_count;
-                this.share_count = share_count;
-                this.view_count = view_count;
+                if ($('strong[data-e2e="like-count"]').text() == '') throw new Error('Post not found');
+                this.cover_image_url = $('img[mode="4"]').attr('src');
+                let t = ''
+                $('h1[data-e2e="browse-video-desc"]').children().each((i, el) => {
+                    if ($(el).get(0).tagName == 'span') t += $(el).text();
+                    if ($(el).get(0).tagName == 'a') {
+                        if ($(el).children().each((i, el) => {
+                            if ($(el).get(0).tagName == 'strong') t += $(el).text();
+                        }));
+                    }
+                });
+                this.video_description = t;
+                this.embed_link = `https://www.tiktok.com/${this.creator}/video/${this.id}`;
+                this.like_count = unabbreviateNumber(lowercaseK($('strong[data-e2e="like-count"]').text()));
+                this.comment_count = unabbreviateNumber(lowercaseK($('strong[data-e2e="comment-count"]').text()));
+                this.saved_count = unabbreviateNumber(lowercaseK($('strong[data-e2e="undefined-count"]').text()));
+                this.share_count = unabbreviateNumber(lowercaseK($('strong[data-e2e="share-count"]').text()));
 
             })
             .catch(error => {
                 console.log(error);
             });
+        return this;
     }
 }
 
-exports.Post = (id, create_time, cover_image_url, share_url, video_description, video_duration, height, width, title, embed_html, embed_link, like_count, comment_count, share_count, view_count) => {
-    this.id = id;
-    this.create_time = create_time;
-    this.cover_image_url = cover_image_url;
-    this.share_url = share_url;
-    this.video_description = video_description;
-    this.video_duration = video_duration;
-    this.height = height;
-    this.width = width;
-    this.title = title;
-    this.embed_html = embed_html;
-    this.embed_link = embed_link;
-    this.like_count = like_count;
-    this.comment_count = comment_count;
-    this.share_count = share_count;
-    this.view_count = view_count;
-}
 
-module.exports = User;
+
+module.exports = Post;
